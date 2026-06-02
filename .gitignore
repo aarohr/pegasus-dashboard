@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.DS_Store
+.ipynb_checkpoints/
+# keep data/pegasus.db committed so the deployed app has data without the source workbook
+# source workbook is proprietary / large — rebuild the DB from it locally
+data/pegasus_databook.xlsx
