@@ -132,7 +132,7 @@ slice_by = st.radio("Slice", ["Clinic vs. ASC", "Texas vs. Georgia"],
                     horizontal=True, key="loc_slice")
 loc = q("select * from location_annual")
 dim = "segment" if slice_by.startswith("Clinic") else "state"
-colmap = {"ASC": TEAL, "Clinic": NAVY, "TX": NAVY, "GA": AMBER}
+colmap = {"ASC": TEAL, "Clinic": NAVY, "Lien": AMBER, "TX": NAVY, "GA": TEAL}
 
 a, b = st.columns([3, 2])
 with a:
@@ -146,7 +146,6 @@ with a:
                        yaxis_title="Net revenue (US$ thousands)",
                        legend=dict(orientation="h", y=1.1), margin=dict(t=30))
     fig2.update_yaxes(gridcolor=GRID)
-    fig2.update_xaxes(type="category")
     st.plotly_chart(fig2, use_container_width=True)
 with b:
     cur_mix = loc[loc.year == 2025].groupby(dim).net_revenue.sum().reset_index()
@@ -155,8 +154,9 @@ with b:
     fig3.update_layout(height=380, title="2025 mix", margin=dict(t=40),
                        legend=dict(orientation="h", y=-0.05))
     st.plotly_chart(fig3, use_container_width=True)
-st.caption("ASCs in Tyler and Texarkana carry an outsized share of revenue; Georgia "
-           "remains a small, underbuilt footprint.")
+st.caption("The four ASCs (Tyler, Texarkana, CSP-Marietta, CSP-Conyers) now drive "
+           "roughly 48% of net revenue. Lien is shown separately as its own book; "
+           "Georgia remains a small footprint.")
 
 st.divider()
 
@@ -221,7 +221,6 @@ with a:
     fig6.update_layout(height=330, plot_bgcolor="white", title="Days sales outstanding",
                        margin=dict(t=40), yaxis_title="Days")
     fig6.update_yaxes(gridcolor=GRID)
-    fig6.update_xaxes(type="category")
     st.plotly_chart(fig6, use_container_width=True)
 with b:
     fig7 = go.Figure()
@@ -233,7 +232,6 @@ with b:
                        title="Net revenue: cash vs. accrued", margin=dict(t=40),
                        legend=dict(orientation="h", y=-0.2), yaxis_title="US$ (thousands)")
     fig7.update_yaxes(gridcolor=GRID)
-    fig7.update_xaxes(type="category")
     st.plotly_chart(fig7, use_container_width=True)
 with c:
     fig8 = go.Figure()

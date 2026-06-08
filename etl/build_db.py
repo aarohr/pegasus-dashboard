@@ -28,18 +28,21 @@ ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "data" / "pegasus_databook.xlsx"   # source workbook
 DB = ROOT / "data" / "pegasus.db"
 
-# ---- location taxonomy (Clinic vs ASC, TX vs GA) -------------------------
-ASC_SITES = {"Tyler Surgery Center", "ASC-TEXARKANA"}
+# ---- location taxonomy (Clinic vs ASC vs Lien, TX vs GA vs Lien) ---------
+# Source of truth: DD1a. Revenue Summary (Estimated Net Revenue basis).
+# Authoritative ASC list provided by deal team.
+ASC_SITES = {"ASC-TEXARKANA", "ASC-TYLER", "CSP-MARIETTA", "CSP-CONYERS"}
 TX_SITES = {
-    "PSC-TYLER", "ASC-TEXARKANA", "PSC-TEXARKANA", "Tyler Surgery Center",
-    "PSC-LONGVIEW", "PSC-LUFKIN", "[MD 1] PC",
+    "PSC-TYLER", "ASC-TEXARKANA", "PSC-TEXARKANA", "ASC-TYLER",
+    "PSC-LONGVIEW", "PSC-LUFKIN",
 }
 GA_SITES = {
     "NSO-MARIETTA", "NSO-CONYERS", "CSP-MARIETTA", "CSP-CONYERS",
-    "MDP-CONYERS", "NSO-CARROLLTON",
+    "NSO-CARROLLTON",
 }
-SKIP_ROWS = {"Texas", "Georgia", "Total", "CORPORATE", "Eliminations",
-             "[Management Co.]", "Georgia - DCO", "Roseland", "Excalibur"}
+LIEN_SITES = {"Lien"}            # personal-injury book, its own category
+# the 12 revenue-generating locations in DD1a (everything else is a subtotal)
+DD1A_LOCATIONS = TX_SITES | GA_SITES | LIEN_SITES
 
 
 def _months(n_years_start=2023):
@@ -121,34 +124,34 @@ def pnl_monthly(wb) -> pd.DataFrame:
 
 
 def location_annual(wb) -> pd.DataFrame:
-    """Net revenue by location/year from Location Summary (Adjusted block)."""
-    ws = list(wb["Location Summary"].iter_rows(values_only=True))
-    # Adjusted block header at row 50; data rows 51-94. months cols 2-37.
-    yr_cols = {2023: range(2, 14), 2024: range(14, 26), 2025: range(26, 38)}
+    """Net revenue by location/year from DD1a. Revenue Summary
+    (Estimated Net Revenue basis). Segment = ASC | Clinic | Lien."""
+    ws = list(wb["DD1a. Revenue Summary"].iter_rows(values_only=True))
+    ENR = {2023: 267, 2024: 268, 2025: 269}      # annual Estimated Net Revenue cols
     recs = []
-    for i in range(51, 95):
-        if i >= len(ws):
-            break
-        lbl = ws[i][1]
-        if not isinstance(lbl, str) or not lbl.strip():
+    for r in ws:
+        # location subtotal rows: col3 == 'x', col4 == location name, col5 numeric
+        if not (len(r) > 5 and r[3] == "x" and isinstance(r[4], str)
+                and r[4].strip() and isinstance(r[5], (int, float))):
             continue
-        lbl = lbl.strip()
-        if lbl in SKIP_ROWS:
+        name = r[4].strip()
+        if name not in DD1A_LOCATIONS:
             continue
-        if lbl not in (TX_SITES | GA_SITES):
-            continue
-        for yr, cols in yr_cols.items():
-            val = sum(ws[i][j] for j in cols if isinstance(ws[i][j], (int, float)))
-            recs.append({
-                "location": lbl,
-                "state": "TX" if lbl in TX_SITES else "GA",
-                "segment": "ASC" if lbl in ASC_SITES else "Clinic",
-                "year": yr,
-                "net_revenue": round(val, 1),
-            })
-    df = pd.DataFrame(recs)
-    tx25 = df[(df.state == "TX") & (df.year == 2025)].net_revenue.sum()
-    assert tx25 > 25000, "TX net revenue tie looks wrong"
+        if name in LIEN_SITES:
+            seg, state = "Lien", "Lien"
+        else:
+            seg = "ASC" if name in ASC_SITES else "Clinic"
+            state = "TX" if name in TX_SITES else "GA"
+        for yr, col in ENR.items():
+            val = r[col] if isinstance(r[col], (int, float)) else 0
+            recs.append({"location": name, "state": state, "segment": seg,
+                         "year": yr, "net_revenue": round(val, 1)})
+    df = pd.DataFrame(recs).drop_duplicates(subset=["location", "year"])
+    # reconciliation: 2025 total ties to DD1a net revenue
+    tot25 = df[df.year == 2025].net_revenue.sum()
+    assert abs(tot25 - 35141) < 5, f"DD1a location total tie broke: {tot25}"
+    asc25 = df[(df.year == 2025) & (df.segment == "ASC")].net_revenue.sum()
+    assert abs(asc25 - 16770) < 5, f"ASC total tie broke: {asc25}"
     return df
 
 
