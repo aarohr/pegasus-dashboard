@@ -146,6 +146,7 @@ with a:
                        yaxis_title="Net revenue (US$ thousands)",
                        legend=dict(orientation="h", y=1.1), margin=dict(t=30))
     fig2.update_yaxes(gridcolor=GRID)
+    fig2.update_xaxes(type="category")
     st.plotly_chart(fig2, use_container_width=True)
 with b:
     cur_mix = loc[loc.year == 2025].groupby(dim).net_revenue.sum().reset_index()
@@ -179,6 +180,7 @@ with a:
                        yaxis_title="Procedures")
     fig4.update_yaxes(secondary_y=True, title="$ / procedure", showgrid=False)
     fig4.update_yaxes(secondary_y=False, gridcolor=GRID)
+    fig4.update_xaxes(type="category", showgrid=False)
     st.plotly_chart(fig4, use_container_width=True)
     st.caption("Volume falls while price-per-case rises — the mix shift in one chart.")
 with b:
@@ -219,6 +221,7 @@ with a:
     fig6.update_layout(height=330, plot_bgcolor="white", title="Days sales outstanding",
                        margin=dict(t=40), yaxis_title="Days")
     fig6.update_yaxes(gridcolor=GRID)
+    fig6.update_xaxes(type="category")
     st.plotly_chart(fig6, use_container_width=True)
 with b:
     fig7 = go.Figure()
@@ -227,26 +230,3 @@ with b:
     fig7.add_bar(x=cash.year.astype(str), y=cash.est_future_collections,
                  name="Est. future collections", marker_color=AMBER)
     fig7.update_layout(barmode="stack", height=330, plot_bgcolor="white",
-                       title="Net revenue: cash vs. accrued", margin=dict(t=40),
-                       legend=dict(orientation="h", y=-0.2), yaxis_title="US$ (thousands)")
-    fig7.update_yaxes(gridcolor=GRID)
-    st.plotly_chart(fig7, use_container_width=True)
-with c:
-    fig8 = go.Figure()
-    fig8.add_trace(go.Scatter(x=ar.date, y=ar.net_ar_insurance, name="Insurance / standard",
-                   stackgroup="one", line=dict(width=0.5, color=NAVY)))
-    fig8.add_trace(go.Scatter(x=ar.date, y=ar.net_ar_injury, name="Injury / PI",
-                   stackgroup="one", line=dict(width=0.5, color=AMBER)))
-    fig8.update_layout(height=330, plot_bgcolor="white", title="Net AR composition",
-                       margin=dict(t=40), legend=dict(orientation="h", y=-0.2),
-                       yaxis_title="US$ (thousands)")
-    fig8.update_yaxes(gridcolor=GRID)
-    fig8.update_xaxes(showgrid=False)
-    st.plotly_chart(fig8, use_container_width=True)
-st.caption("DSO sits near 200+ days and accrued (not-yet-collected) revenue is a "
-           "growing slice of the top line — the central earnings-quality risk.")
-
-st.divider()
-st.caption("Source: Project Pegasus QofE databook, migrated to SQLite via etl/build_db.py. "
-           "KPI/revenue metrics on the DD1 quality-of-revenue basis; P&L trend on the "
-           "consolidated adjusted IS basis. Built for analysis, not investment advice.")
