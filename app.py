@@ -87,11 +87,12 @@ st.divider()
 # MODULE 1 — P&L DEVELOPMENT OVER TIME
 # ==========================================================================
 st.header("1 · P&L Development Over Time")
-gran = st.radio("View", ["Monthly", "Annual"], horizontal=True, key="pnl_gran")
+gran = st.radio("View", ["Annual", "Monthly"], horizontal=True, key="pnl_gran")
 
 pnl = q("select * from pnl_monthly")
 pnl["date"] = pd.to_datetime(pnl.month + "-01")
-if gran == "Annual":
+annual = gran == "Annual"
+if annual:
     g = pnl.assign(yr=pnl.month.str[:4]).groupby("yr").agg(
         net_revenue=("net_revenue", "sum"), gross_profit=("gross_profit", "sum"),
         adjusted_ebitda=("adjusted_ebitda", "sum")).reset_index()
@@ -103,24 +104,41 @@ else:
     g["x"] = g.date
 
 fig = make_subplots(specs=[[{"secondary_y": True}]])
-fig.add_bar(x=g.x, y=g.net_revenue, name="Net revenue", marker_color=NAVY, opacity=.85)
-fig.add_bar(x=g.x, y=g.gross_profit, name="Gross profit", marker_color=TEAL, opacity=.85)
+bar_w = 0.26 if annual else None
+fig.add_bar(x=g.x, y=g.net_revenue, name="Net revenue", marker_color=NAVY,
+            width=bar_w, marker_line_width=0)
+fig.add_bar(x=g.x, y=g.gross_profit, name="Gross profit", marker_color=TEAL,
+            width=bar_w, marker_line_width=0)
 fig.add_trace(go.Scatter(x=g.x, y=g.adjusted_ebitda, name="Adj. EBITDA",
-              mode="lines+markers", line=dict(color=AMBER, width=3)))
-fig.add_trace(go.Scatter(x=g.x, y=g.ebitda_margin_pct, name="EBITDA margin %",
-              mode="lines", line=dict(color=RED, width=2, dash="dot")), secondary_y=True)
-fig.add_trace(go.Scatter(x=g.x, y=g.gross_margin_pct, name="Gross margin %",
-              mode="lines", line=dict(color=SLATE, width=2, dash="dot")), secondary_y=True)
-fig.update_layout(barmode="group", height=440, plot_bgcolor="white",
-                  legend=dict(orientation="h", y=1.12), margin=dict(t=40, b=10),
-                  yaxis_title="US$ (thousands)")
-fig.update_yaxes(secondary_y=True, title="Margin %", range=[0, max(80, g.gross_margin_pct.max()+10)],
-                 showgrid=False)
-fig.update_yaxes(secondary_y=False, gridcolor=GRID)
+              mode="lines+markers", line=dict(color=AMBER, width=3),
+              marker=dict(size=7)))
+
+# margin lines only on the annual view (monthly is too noisy to read)
+if annual:
+    fig.add_trace(go.Scatter(x=g.x, y=g.ebitda_margin_pct, name="EBITDA margin %",
+                  mode="lines+markers", line=dict(color=RED, width=2.5),
+                  marker=dict(size=6)), secondary_y=True)
+    fig.add_trace(go.Scatter(x=g.x, y=g.gross_margin_pct, name="Gross margin %",
+                  mode="lines+markers", line=dict(color=SLATE, width=2, dash="dot"),
+                  marker=dict(size=6)), secondary_y=True)
+    fig.update_yaxes(secondary_y=True, title="Margin %", range=[0, 75],
+                     showgrid=False, ticksuffix="%")
+    fig.update_xaxes(type="category")
+else:
+    fig.update_yaxes(secondary_y=True, showgrid=False, visible=False)
+
+fig.update_layout(barmode="group", bargap=0.35, bargroupgap=0.08,
+                  height=440, plot_bgcolor="white",
+                  legend=dict(orientation="h", y=1.12, x=0),
+                  margin=dict(t=40, b=10), yaxis_title="US$ (thousands)",
+                  hovermode="x unified")
+fig.update_yaxes(secondary_y=False, gridcolor=GRID, zeroline=True,
+                 zerolinecolor=GRID)
 fig.update_xaxes(showgrid=False)
 st.plotly_chart(fig, use_container_width=True)
-st.caption("Revenue grows on a richer case mix, not volume. Watch the EBITDA-margin "
-           "line: it compresses into 2025 even as the bars rise.")
+st.caption("Revenue grows on a richer case mix rather than volume, and gross margin "
+           "holds steady around 60%. Adjusted EBITDA margin rose in 2024 and gave "
+           "some of that back in 2025. Switch to Monthly to see the underlying detail.")
 
 st.divider()
 
